@@ -12,19 +12,14 @@ import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <Switch>
+      <>
+        <Navbar/>
         <Route exact path='/' component={Landing}/>
-        <Route path='/'>
-          <Navbar/>
-          <Route exact path='/recipes' component={Home}/>
-          <Route exact path='/home' component={Navbar}/>
-          <Route exact path='/recipes/:id' component={Detail}/>
-          <Route exact path='/create' component={Form}/>
-          <Route exact path='/about' component={About}/>
-        </Route>
-      </Switch>
-    </div>
+        <Route exact path='/recipes' component={Home}/>
+        <Route exact path='/recipes/:id' component={Detail}/>
+        <Route exact path='/create' component={Form}/>
+        <Route exact path='/about' component={About}/>
+      </>
   );
 }
 

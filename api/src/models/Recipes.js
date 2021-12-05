@@ -27,6 +27,9 @@ module.exports = (sequelize) => {
     healthScore:{
       type: DataTypes.FLOAT,
     },
+    instructions: {
+      type: DataTypes.TEXT,
+    },
     },
     {
       timestamps: false,

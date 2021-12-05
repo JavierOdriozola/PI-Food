@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { Diets } = require('../db')
-const axios = require('axios')
+// const axios = require('axios')
 // const {
 //     API_KEY1,
 //     API_KEY2,
@@ -14,39 +14,6 @@ const axios = require('axios')
   
 const router = Router();
 
-
-let diets = [
-    {
-        name: 'Gluten Free',
-    },
-    {
-        name: 'Ketogenic',
-    },
-    {
-        name: 'Vegetarian',
-    },
-    {
-        name: 'Lacto-Vegetarian',
-    },
-    {
-        name: 'Ovo-Vegetarian',
-    },
-    {
-        name: 'Vegan',
-    },
-    {
-        name: 'Pescetarian',
-    },
-    {
-        name: 'Paleo',
-    },
-    {
-        name: 'Primal',
-    },
-    {
-        name: 'Whole 30',
-    },
-];
 
 
 

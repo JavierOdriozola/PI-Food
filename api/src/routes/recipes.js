@@ -26,7 +26,7 @@ const {
 router.get('/', async (req, res, next) => {
 	try {
         const {name} = req.query;
-        const recipesFromApi = await axios.get(`https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY1}&addRecipeInformation=true&number=100`);
+        const recipesFromApi = await axios.get(`https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY2}&addRecipeInformation=true&number=100`);
         const recipesFromDB = await Recipes.findAll({include: Diets})
         const allDiets = []  
         const recipesFilteredDB = recipesFromDB.map(recipe => {
@@ -58,9 +58,10 @@ router.get('/', async (req, res, next) => {
                     id:    recipe.id,
                     title: recipe.title,
                     image: recipe.image,
-                    summary: recipe.summary,
-                    diets: recipe.diets,
                     score: recipe.spoonacularScore,
+                    summary: recipe.summary.replace(/<[^>]*>?/g,""),
+                    healthScore: recipe.healthScore,
+                    diets: recipe.diets,
                     instructions: recipe.analyzedInstructions.map(el => el.steps.map(e => e.step))
                 }
             })
@@ -80,8 +81,8 @@ router.get('/', async (req, res, next) => {
         })
         .then( fullRecipes => {
             if(name) {
-                const filter = fullRecipes.filter( recipe => recipe.title?.toLowerCase().includes(name.toLowerCase()) )
-                res.send(filter)
+                const filter = fullRecipes.filter(recipe => recipe.title.toLowerCase().includes(name))
+                filter.length? res.status(200).send(filter) : res.status(404).send('No se encontró la receta');
             } else {
                 res.send(fullRecipes)
             }
@@ -95,85 +96,49 @@ router.get('/', async (req, res, next) => {
 
 
 
-router.get('/:idReceta', async (req, res, next) => {
-	const {idReceta} = req.params;
-    
-    try {
-        if(idReceta.length < 20 ) {
-            const recipesFromApi = await axios.get(`https://api.spoonacular.com/recipes/${idReceta}/information?apiKey=${API_KEY1}`);
-            const recipe = recipesFromApi.data
-            if (recipe.vegetarian && !recipe.diets.includes('vegetarian')) {
-                recipe.diets = [...recipe.diets, 'vegetarian']
-              } else if (recipe.glutenFree  && !recipe.diets.includes('gluten free')){
-                recipe.diets = [...recipe.diets, 'gluten free']
-              } else if (recipe.vegan  && !recipe.diets.includes('vegan')) {
-                recipe.diets = [...recipe.diets, 'vegan']
-              }
-            res.json(recipe)
-        } else {
-            const recipesFromDB = await Recipes.findAll({include: Diets});
-            const recipe = recipesFromDB.map( recipe => {
-                if(recipe.id.toString() === idReceta )
-                return {
-                    id: recipe.id,
-                    title: recipe.title,
-                    image: recipe.image,
-                    score: recipe.score,
-                    summary: recipe.summary,
-                    healthScore: recipe.healthScore,
-                    diets: recipe.diets.map( diet => diet.name)
-                }
-            })
-            res.json(recipe[0])
+router.get('/:id', async (req, res, next) => {
+    try{
+        const {id} = req.params;
+        //recupero receta con id de la base de datos
+        if(id.length >= 10 && typeof id === "string"){
+          const recipe = await Recipes.findByPk(id, {
+            include: Diets
+          });
+          return res.json(recipe);
         }
-    } catch (error) {
-        next(error)
-    }
-        
-})
+          //si no la encontre en la db, busco en la api
+          const recipeAPI = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${API_KEY2}`);
+          recipe = {
+              id: recipeAPI.data.id,
+              title: recipeAPI.data.title,
+              summary: recipeAPI.data.summary.replace(/<[^>]*>?/g,""),
+              spoonacularScore: recipeAPI.data.spoonacularScore,
+              healthScore: recipeAPI.data.healthScore,
+              instructions: recipeAPI.data.analyzedInstructions.map(el => el.steps.map(e => e.step)),
+              image: recipeAPI.data.image,
+              diets: recipeAPI.data.diets,
+              dishTypes: recipeAPI.data.dishTypes
+          }
+          return res.json(recipe);
+        }
+      catch(err){
+        next(err);
+      }
+  });
 
-
-
-
-
-
-
-
-//   const id = req.params.idReceta;
-// 	if (id.includes('-')) {
-// 		Recipes.findByPk(id, { include: Diets }).then((recipe) => {
-// 			return res.json(recipe);
-// 		});
-// 	} else {
-// 		axios
-// 			.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${API_KEY1}`)
-// 			.then((response) => {
-// 				return res.json({
-// 					title: response.data.title,
-// 					image: response.data.image,
-// 					diets: response.data.diets,
-// 					summary: response.data.summary,
-// 					score: response.data.spoonacularScore,
-// 					healthScore: response.data.healthScore,
-// 					instructions: response.data.instructions,
-// 				});
-// 			})
-// 			.catch((error) => next(error));
-// 	}
-// })
 
 
 router.post("/recipe", async (req, res, next) => {
-	let {title, summary, healthScore, score, instructions, image, diets} = req.body;
+	const {title, summary, healthScore, score, instructions, image, diets} = req.body;
 
 	try {
-    let newRecipe = await Recipes.create({
+    let recipes = await Recipes.create({
         title,
 		summary, 
 		healthScore, 
 		score, 
 		instructions, 
-		image, 
+		image: image || 'https://image.freepik.com/vector-gratis/pagina-error-404-no-encontrada-donut_114341-54.jpg',  // si no se envía imagen, queda de default
 		diets,
 		id: uuidv4()
     })
@@ -186,7 +151,7 @@ router.post("/recipe", async (req, res, next) => {
              } 
          });
 
-    newRecipe.addDiets(dbDiets)
+    recipes.addDiets(dbDiets)
 
     res.send('Actividad Creada!')
 		}
@@ -195,99 +160,32 @@ router.post("/recipe", async (req, res, next) => {
 		  }
 })
 
+    
+    
+    
+    
+    
+    
+    
+    
 
+	// try {
+    // let recipeCreated = await Recipes.create({
+    //     title,
+	// 	summary, 
+	// 	healthScore, 
+	// 	score, 
+	// 	instructions, 
+	// 	image: image || 'https://image.freepik.com/vector-gratis/pagina-error-404-no-encontrada-donut_114341-54.jpg',  // si no se envía imagen, queda de default
+	// 	diets,
+	// 	id: uuidv4()
+    // })
 
+    // let dietDb = await Diets.findAll({
+    //     where: { name: diets } 
+    // });
 
-
-
-	
-	// try{
-	// 	const {title, summary, spoonacularScore, healthScore, analyzedInstructions, image, diets} = req.body;
-	// 	//creo una receta con los datos recibidos
-	// 	const [recipeCreated, hola] = await Recipes.findOrCreate({
-	// 	  where: {
-	// 	  id: uuidv4(),
-	// 	  title,
-	// 	  summary,
-	// 	  spoonacularScore,
-	// 	  healthScore,
-	// 	  analyzedInstructions,
-	// 	  image
-	// 	  }
-	// 	});
-	// 	// const dietsFound = await getMatchingDiets(diets);
-	// 	await recipeCreated.setDiets(diets);
-	// 	res.json({hola, obj: recipeCreated});
-	//   }
-	//   catch(err){
-	// 	next(err);
-	//   }
-	// })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// 	try {
-//         const {title, summary, score, healthScore, steps, image, diets} = req.body;
-//         const newRecipe = await Recipes.create({
-//             title,
-//             summary,
-//             score,
-//             healthScore,
-//             image
-//         })
-//         const dietsDB = await Diets.findAll({
-//             where: {name: diets}
-//         }) 
-
-//         newRecipe.addDiets(dietsDB)
-
-//         res.status(201).send(newRecipe)
-//     } catch (error) {
-//         next(error)
-//     }
-// })
-
-
-
-
-
-
-
-
-
-
-//   const { title, summary, score, healthScore, instructions, diets } = req.body;
-// 	Recipes.create({
-//     id,
-// 		title,
-// 		image: '',
-// 		summary,
-// 		score: parseFloat(score),
-// 		healthScore: parseFloat(healthScore),
-// 		instructions,
-// 	})
-// 		.then((recipeCreated) => {
-// 			return recipeCreated.setDiets(diets);
-// 		})
-// 		.then(newRecipe => {
-// 			return res.json({
-// 				message: 'Recipe created successfully',
-// 			});
-// 		})
-// 		.catch((error) => next(error));
-// })
-
+    // recipeCreated.addDiets(dietDb)
 
 
 
