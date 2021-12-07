@@ -6,9 +6,7 @@ const {v4: uuidv4 } =require('uuid');
 
 require('dotenv').config();
 
-
 const router = Router();
-
 
 const {
     API_KEY1,
@@ -22,11 +20,10 @@ const {
   } = process.env;
 
 
-
 router.get('/', async (req, res, next) => {
 	try {
         const {name} = req.query;
-        const recipesFromApi = await axios.get(`https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY2}&addRecipeInformation=true&number=100`);
+        const recipesFromApi = await axios.get(`https://api.spoonacular.com/recipes/complexSearch?apiKey=${API_KEY4}&addRecipeInformation=true&number=100`);
         const recipesFromDB = await Recipes.findAll({include: Diets})
         const allDiets = []  
         const recipesFilteredDB = recipesFromDB.map(recipe => {
@@ -93,9 +90,6 @@ router.get('/', async (req, res, next) => {
 })
 
 
-
-
-
 router.get('/:id', async (req, res, next) => {
     try{
         const {id} = req.params;
@@ -107,7 +101,7 @@ router.get('/:id', async (req, res, next) => {
           return res.json(recipe);
         }
           //si no la encontre en la db, busco en la api
-          const recipeAPI = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${API_KEY2}`);
+          const recipeAPI = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${API_KEY5}`);
           recipe = {
               id: recipeAPI.data.id,
               title: recipeAPI.data.title,
@@ -125,7 +119,6 @@ router.get('/:id', async (req, res, next) => {
         next(err);
       }
   });
-
 
 
 router.post("/recipe", async (req, res, next) => {
