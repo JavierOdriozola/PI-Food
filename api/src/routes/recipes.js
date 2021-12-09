@@ -101,7 +101,7 @@ router.get('/:id', async (req, res, next) => {
           return res.json(recipe);
         }
           //si no la encontre en la db, busco en la api
-          const recipeAPI = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${API_KEY5}`);
+          const recipeAPI = await axios.get(`https://api.spoonacular.com/recipes/${id}/information?apiKey=${API_KEY4}`);
           recipe = {
               id: recipeAPI.data.id,
               title: recipeAPI.data.title,
